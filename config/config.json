@@ -1,20 +1,28 @@
 {
-  "train_dataset": {
-    "manifest_filepath": "../input_audio/dataset.csv",
-    "sample_rate": 22050,
-    "batch_size": 16
-  },
-  "validation_dataset": {
-    "manifest_filepath": "../input_audio/dataset.csv",
-    "sample_rate": 22050,
-    "batch_size": 16
-  },
-  "model": {
-    "sample_rate": 22050
-  },
-  "trainer": {
-    "max_epochs": 1000,
-    "gpus": 1,
-    "precision": 16
-  }
+    "model": "Tacotron2",
+    "run_name": "tacotron2",
+    "run_description": "training a Tacotron2 model to obama",
+
+    "audio": {
+        "audio_processor": "coqui",
+        "sample_rate": 22050,
+        "num_mels": 80,
+        "min_level_db": -100,
+        "frame_shift_ms": null,
+        "frame_length_ms": null,
+        "ref_level_db": 20,
+        "num_freq": 1025,
+        "preemphasis": 0.98,
+        "min_level_db_scale": 0.01,
+        "silence_threshold": 4
+    },
+
+    "batch_size": 32,
+    "eval_batch_size":16,
+    "epochs": 1000,
+    "learning_rate": 0.001,
+    "dataset_path": "../input_audio/p_audio/processed_data.csv",
+    "output_path": "../tts_out",
+
+    "text_cleaner": "english_cleaners"
 }
