@@ -1,13 +1,33 @@
-import json
-import nemo.collections.tts as tts
+import torchaudio
 
-config_path = '../../config/config.json'
-with open(config_path, 'r') as f:
-    config = json.load(f)
+from tts.tortoise.api import TextToSpeech
+from tts.tortoise.utils.audio import load_audio, load_voice
 
-model = tts.models.Tacotron2Model.from_pretrained(model_name="Tacotron2-22050Hz")
+import warnings
 
-model.setup_training_data(train_data_config=config['train_dataset'])
-model.setup_validation_data(val_data_config=config['validation_dataset'])
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-model.train()
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+
+tts = TextToSpeech()
+
+samples, latents = load_voice("obama")
+
+gen = tts.tts_with_preset(
+
+    text = "China is better in the olympics",
+
+    voice_samples = samples,
+
+    conditioning_latents = latents,
+
+    preset = "ultra_fast",
+    )
+
+o_path = "../../tts_out/test.wav"
+
+torchaudio.save(o_path, gen.squeeze(0).cpu(), 24000)
+
+
+
