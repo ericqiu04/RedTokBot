@@ -1,9 +1,12 @@
+import sys
+sys.path.append('C:/Users/ericr/OneDrive/Documents/GitHub/RedTokBot/tts')
 import torchaudio
-
-from tts.tortoise.api import TextToSpeech
-from tts.tortoise.utils.audio import load_audio, load_voice
+import torch
+from tortoise.api import TextToSpeech
+from tortoise.utils.audio import load_audio, load_voice
 
 import warnings
+
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -22,12 +25,15 @@ gen = tts.tts_with_preset(
 
     conditioning_latents = latents,
 
-    preset = "ultra_fast",
+    preset = "high_quality",
     )
 
-o_path = "../../tts_out/test.wav"
+gen = gen.cuda()
 
-torchaudio.save(o_path, gen.squeeze(0).cpu(), 24000)
+processed_gen = gen.squeeze(0).cpu()
+o_path = "tts_out/test.wav"
+
+torchaudio.save(o_path, processed_gen, 24000)
 
 
 
