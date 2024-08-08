@@ -1,5 +1,4 @@
 import sys
-sys.path.append('C:/Users/ericr/OneDrive/Documents/GitHub/RedTokBot/tts')
 import torchaudio
 import torch
 from tortoise.api import TextToSpeech
@@ -31,7 +30,7 @@ gen = tts.tts_with_preset(
 gen = gen.cuda()
 
 processed_gen = gen.squeeze(0).cpu()
-o_path = "tts_out/test.wav"
+o_path = "tts_out/ob_test.wav"
 
 torchaudio.save(o_path, processed_gen, 24000)
 
