@@ -134,28 +134,19 @@ def save_post_content(post, directory):
     
     file_path = os.path.join(directory, f"{post.id}.txt")
     
-    with open(file_path, 'w') as file:
+    with open(file_path, 'w', encoding='utf-8') as file:
     
         file.write(post.selftext)
 
     return file_path
 
 
-def text_to_speech(text, output_path):
-    
-    TEXT = replace_abbreviations(text, abbreviations)
-    
-    parts = textwrap.wrap(text, width=300, break_long_words=False, replace_whitespace=False)
+def batch_tts(text_batch, output_directory):
+    results = []
+    for t in text_batch:
+        audio = tts.tts_with_preset(
 
-    audio_files = []
-
-    for i, part in enumerate(parts):
-
-        audio_file_path = f"{i}{output_path}"
-
-        gen = tts.tts_with_preset(
-
-        text = part,
+        text = t,
 
         voice_samples = samples,
 
@@ -164,22 +155,18 @@ def text_to_speech(text, output_path):
         preset = "high_quality",
 
         )
-        gen = gen.cuda()
         
-        processed_gen = gen.squeeze(0).cpu()
-    
-        torchaudio.save(output_path, processed_gen, 24000)
-        
-        audio_files.append(audio_file_path)
+        audio = audio.cuda()
 
-    combined = AudioSegment.empty()
+        processed_gen = audio.squeeze(0).cpu()
 
-    for file in audio_files:
-        segment = AudioSegment.from_mp3(file)
-        combined += segment
+        out_path = os.path.join(output_directory, f"{datetime.now.timestamp()}.wav")
+
+        torchaudio.save(out_path, processed_gen, 24000)
+
+        results.append(out_path)
     
-    combined.export(output_path, format = "mp3")
-    
+    return results
 
 
 
@@ -218,13 +205,21 @@ def main():
 
         post_file_path = save_post_content(post, date_str)
 
-        print(f"Saved post {post_file_path}")
-
         audio_file_path = os.path.join(date_str, f"{post.id}.mp3")
 
+        text = replace_abbreviations(post.selftext, abbreviations)
+        
+        batch_audio_paths = batch_tts([text], date_str)
+        
+        combined_audio = AudioSegment.empty()
+       
+        for path in batch_audio_paths:
+       
+            combined_audio += AudioSegment.from_file(path)
+       
+        combined_audio.export(audio_file_path, format="mp3")
+      
         print(f"Saved Audio {audio_file_path}")
-
-        text_to_speech(post.selftext, audio_file_path)
 
         new_ids.add(post.id)
 
