@@ -4,14 +4,13 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-
 import textwrap
 import praw
 import os
 
-import multiprocessing
-
+import torch 
 import torchaudio
+
 from tortoise.api import TextToSpeech
 from tortoise.utils.audio import load_voice
 
@@ -119,37 +118,59 @@ def replace_abbreviations(text, abbreviations):
     
     return ' '.join(new_words)
 
+def split_text(text, max_length = 300):
+    
+    words = text.split()
+
+    for i in range(0, len(words, max_length)):
+
+        yield ' '.join(words[i:i + max_length])
 
 def text_to_speech(file_path, output_path):
     
-    tts = TTS.to('cuda')
-
-    samples = samples.to('cuda')
-
-    latents = latents.to('cuda')
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     with open(file_path, 'r', encoding = 'utf-8') as file:
+
         text = file.read()
 
+    segments = list(split_text(text))
 
-    audio = tts.tts_with_preset(
+    audio_segments = []
 
-        text = text,
+    streams = [torch.cuda.Stream() for _ in segments]
 
-        voice_samples = samples,
 
-        conditioning_latents = latents,
+    for segment, stream in zip(segments, streams):
+        
+        with torch.cuda.device(device). torch.cuda.stream(stream):
 
-        preset = "high_quality",
+            audio = TTS.tts_with_preset(
 
-        )
+            text = segment,
+
+            voice_samples = SAMPLES.to(device),
+
+            conditioning_latents = LATENTS.to(device),
+
+            preset = "high_quality",
+
+            )
+        
+        audio = audio.squeeze().to('cpu', non_blocking = True)
+
+        audio_segments.append(audio)
     
-    audio = audio.cuda()
+    
+    for stream in streams:
 
-    audio = audio.squeeze.cpu()
+        stream.synchronize()
 
-    torchaudio.save(output_path, audio, 24000)
+    final_audio = torch.cat([seg.unsqueeze(0) for seg in audio_segments], dim = 0)
+
+    torchaudio.save(output_path, final_audio, 24000)
+
+
 
 
 def main():
@@ -166,25 +187,13 @@ def main():
 
         save_posts_to_file(post, directory)
     
-
-
     text_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.txt')]
-
-    processes = []
-
+    
     for i, file_path in enumerate(text_files):
 
         output_path = f'audio_output_{i}.wav'
         
-        p = multiprocessing.Process(target = text_to_speech, args = (file_path, output_path))
-        
-        processes.append(p)
-
-        p.start()
-
-    for p in processes:
-
-        p.join()
+        text_to_speech(file_path, output_path)
 
 
 if __name__ == "__main__":
