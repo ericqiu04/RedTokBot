@@ -107,7 +107,7 @@ def save_posts_to_file(post, directory):
     
     with open(filepath, 'w', encoding='utf-8') as file:
 
-        file.write(f"Title: {post.title}\nText: {replace_abbreviations(post.selftext, ABBREVIATIONS)}")
+        file.write(f"{replace_abbreviations(post.selftext, ABBREVIATIONS)}")
 
 
 def replace_abbreviations(text, abbreviations):
@@ -118,13 +118,22 @@ def replace_abbreviations(text, abbreviations):
     
     return ' '.join(new_words)
 
-def split_text(text, max_length = 300):
+def split_text(text, max_text=300):
     
     words = text.split()
+    chunks = []
+    current_chunk = []
 
-    for i in range(0, len(words), max_length):
-
-        yield ' '.join(words[i:i + max_length])
+    for word in words:
+        if len(current_chunk) + len(word.split()) > max_text:
+            chunks.append(' '.join(current_chunk))
+            current_chunk = []
+        current_chunk.append(word)
+    
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+    
+    return chunks
 
 def text_to_speech(file_path, output_path):
     
@@ -141,25 +150,37 @@ def text_to_speech(file_path, output_path):
     streams = [torch.cuda.Stream() for _ in segments]
 
 
-    for segment, stream in zip(segments, streams):
-        
-        with torch.cuda.device(device). torch.cuda.stream(stream):
+    for segment in segments:
+
+        stream = torch.cuda.Stream()
+
+        with torch.cuda.device(device), torch.cuda.stream(stream):
+
+            samples = [s.to(device) for s in SAMPLES if s is not None]
+
+            latents = LATENTS
 
             audio = TTS.tts_with_preset(
 
-            text = segment,
+                text=segment,
 
-            voice_samples = SAMPLES.to(device),
+                voice_samples=samples,
 
-            conditioning_latents = LATENTS.to(device),
+                conditioning_latents=latents,
 
-            preset = "high_quality",
+                preset="high_quality",
 
-            )
+            ).to(device)
+            
+            audio = audio.squeeze().to('cpu', non_blocking=True)
+
+            audio_segments.append(audio)
         
-        audio = audio.squeeze().to('cpu', non_blocking = True)
+        stream.synchronize()
 
-        audio_segments.append(audio)
+    final_audio = torch.cat([seg.unsqueeze(0) for seg in audio_segments], dim = 0)
+
+    torchaudio.save(output_path, final_audio, 24000)
     
     
     for stream in streams:
